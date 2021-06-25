@@ -1,0 +1,2 @@
+pandas
+awesome-slugify
