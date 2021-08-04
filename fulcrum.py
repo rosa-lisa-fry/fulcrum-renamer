@@ -1,8 +1,26 @@
-from pathlib import Path
-import pandas as pd
-from slugify import slugify
 import argparse
+import pandas as pd
+import re
 import sys
+
+from pathlib import Path
+from slugify import slugify
+
+
+DIRECTION_REGEX = re.compile(r'^([NSEW]{1,2}\.?|North|South|East|West)$', re.I)
+
+
+def split_c_address_thoroughfare(c_address_thoroughfare):
+    output = []
+    possible_direction, rest_of_address = c_address_thoroughfare.split(' ', maxsplit=1)
+    
+    match = DIRECTION_REGEX.match(possible_direction)
+    if match:
+        output.extend([rest_of_address, possible_direction])
+    else:
+        output.append(c_address_thoroughfare)
+        
+    return ' '.join(output)
 
 
 def main(args):
@@ -11,12 +29,12 @@ def main(args):
     
     df = pd.read_csv(str(csv_file))
     
-    if 'output_column' not in df.columns:
-        print('There is no "output_column" column in the CSV file! Panic.')
-        sys.exit(1)
+    df['fixed_c_address_thoroughfare'] = df.c_address_thoroughfare.apply(split_c_address_thoroughfare)
+    output_file_name_columns = ['fixed_c_address_thoroughfare', 'c_address_sub_thoroughfare', 'c_address_suite']
+    df['adjusted_address_rename_value'] = df[output_file_name_columns].fillna('').apply(lambda x: ' '.join(x), axis=1)
 
     for guid, address in df[[
-        'fulcrum_id', 'output_column']].to_records(index=False):
+        'fulcrum_id', 'adjusted_address_rename_value']].to_records(index=False):
         
         slugified_address = slugify(address, to_lower=True)
         guid_file = cwd / (guid + '.pdf')
