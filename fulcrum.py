@@ -30,8 +30,11 @@ def main(args):
     df = pd.read_csv(str(csv_file))
     
     df['fixed_c_address_thoroughfare'] = df.c_address_thoroughfare.apply(split_c_address_thoroughfare)
-    output_file_name_columns = ['fixed_c_address_thoroughfare', 'c_address_sub_thoroughfare', 'c_address_suite']
-    df['adjusted_address_rename_value'] = df[output_file_name_columns].fillna('').apply(lambda x: ' '.join(x), axis=1)
+    output_file_name_columns = ['district_name', 'district_name_other', 'fixed_c_address_thoroughfare', 'c_address_sub_thoroughfare', 'c_address_suite']
+    for col in output_file_name_columns:
+        if not col in df.columns:
+            df[col] = ''
+    df['adjusted_address_rename_value'] = df[output_file_name_columns].fillna('').apply(lambda x: ' '.join(x), axis=1).str.title()
 
     for guid, address in df[[
         'fulcrum_id', 'adjusted_address_rename_value']].to_records(index=False):
