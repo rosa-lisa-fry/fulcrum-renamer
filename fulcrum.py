@@ -11,6 +11,9 @@ DIRECTION_REGEX = re.compile(r'^([NSEW]{1,2}\.?|North|South|East|West)$', re.I)
 
 
 def split_c_address_thoroughfare(c_address_thoroughfare):
+    if not isinstance(c_address_thoroughfare, str):
+        return ''
+    
     output = []
     possible_direction, rest_of_address = c_address_thoroughfare.split(' ', maxsplit=1)
     
