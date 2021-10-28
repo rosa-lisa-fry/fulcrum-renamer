@@ -6,7 +6,7 @@
 # - Wants to remove the extra files based on the `site-ids` in the CSV
 # - Then wants to rename the file from `site-ids` to the `filename` in the CSV
 
-# In[2]:
+# In[4]:
 
 
 import argparse
@@ -72,6 +72,7 @@ def generate_renamed_files_based_on_csv(path_to_csv: str) -> Dict[str, str]:
         .fillna('')
         .apply(lambda x: ' '.join(x), axis=1)
         .str.title()
+        .apply(lambda x: slugify(address, to_lower=True))
     )
     
     return dict(df[['fulcrum_id', 'adjusted_address_rename_value']].values)
@@ -95,9 +96,15 @@ def main(args):
         # the dict of <uuid>: <renamed-file>, then
         # rename that file.
         if fp.stem in record_ids_to_keep:
-            new_filename = fulcrum_id_to_name_map[fp.stem]
-            print(f"Renaming {fp.name} to {new_filename}")
-            fp.rename(new_filename)
+            new_filename = (fulcrum_id_to_name_map[fp.stem] + '.pdf')
+            if new_filename.exists():
+                existing_files = target_directory.glob(slugified_address + '*')
+                renamed_file = guid_file.rename(
+                    slugified_address + '-' + str(len(list(existing_files))) + '.pdf')
+                print(f'Renaming {new_filename} to {renamed_file}')
+            else:
+                print(f"Renaming {fp.name} to {new_filename}")
+                fp.rename(new_filename)
         else:
             # If not in the dict, delete
             # the file.
