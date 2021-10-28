@@ -72,7 +72,7 @@ def generate_renamed_files_based_on_csv(path_to_csv: str) -> Dict[str, str]:
         .fillna('')
         .apply(lambda x: ' '.join(x), axis=1)
         .str.title()
-        .apply(lambda x: slugify(address, to_lower=True))
+        .apply(lambda x: slugify(x, to_lower=True))
     )
     
     return dict(df[['fulcrum_id', 'adjusted_address_rename_value']].values)
