@@ -96,7 +96,7 @@ def main(args):
         # the dict of <uuid>: <renamed-file>, then
         # rename that file.
         if fp.stem in record_ids_to_keep:
-            new_filename = (fulcrum_id_to_name_map[fp.stem] + '.pdf')
+            new_filename = Path(fulcrum_id_to_name_map[fp.stem] + '.pdf')
             if new_filename.exists():
                 existing_files = target_directory.glob(slugified_address + '*')
                 renamed_file = guid_file.rename(
