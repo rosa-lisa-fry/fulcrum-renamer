@@ -40,6 +40,13 @@ def split_c_address_thoroughfare(c_address_thoroughfare: str) -> str:
     return ' '.join(output)
 
 
+def get_ids_from_csv1(path_to_csv: str) -> pd.DataFrame:
+    df = pd.read_csv(path_to_csv)
+    if not '_record_id' in df.columns:
+        raise Exception(f"Can't find the _record_id column in the CSV {path_to_csv}!")
+    return df['_record_id'].unique().tolist()
+
+    
 def generate_renamed_files_based_on_csv(path_to_csv: str) -> Dict[str, str]:
     
     csv_file = Path(path_to_csv_file)
@@ -76,14 +83,16 @@ def generate_renamed_files_based_on_csv(path_to_csv: str) -> Dict[str, str]:
 def main(args):
     
     # Read the CSV
-    fulcrum_id_to_name_map = generate_renamed_files_based_on_csv(args.path_to_csv_file) # Dict[str, str]
+    record_ids_to_keep = get_ids_from_csv1(args.path_to_source_csv)
+    fulcrum_id_to_name_map = generate_renamed_files_based_on_csv(args.path_to_csv_in_target_directory) # Dict[str, str]
+    target_directory = Path(args.path_to_csv_in_target_directory).parent
     
     # For each file in the directory with the name <uuid>.pdf
-    for fp in Path(args.path_to_target_directory).glob('*.pdf'):
+    for fp in target_directory.glob('*.pdf'):
         # If the <uuid> of that file is a key in 
         # the dict of <uuid>: <renamed-file>, then
         # rename that file.
-        if fp.stem in fulcrum_id_to_name_map.keys():
+        if fp.stem in record_ids_to_keep:
             new_filename = fulcrum_id_to_name_map[fp.stem]
             print(f"Renaming {fp.name} tp {new_filename}")
             fp.rename(new_filename)
@@ -105,7 +114,7 @@ if __name__ == '__main__':
     parser.add_argument('path_to_csv_file',
         help='full path to CSV file directory.')
     
-    parser.add_argument('path_to_target_directory',
+    parser.add_argument('path_to_csv_in_target_directory',
         help='full path to the directory of files to be renamed.')
     
     args = parser.parse_args()
