@@ -49,7 +49,7 @@ def get_ids_from_csv1(path_to_csv: str) -> pd.DataFrame:
     
 def generate_renamed_files_based_on_csv(path_to_csv: str) -> Dict[str, str]:
     
-    csv_file = Path(path_to_csv_file)
+    csv_file = Path(path_to_csv)
     
     df = pd.read_csv(str(csv_file))
     
