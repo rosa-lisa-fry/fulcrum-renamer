@@ -83,7 +83,7 @@ def generate_renamed_files_based_on_csv(path_to_csv: str) -> Dict[str, str]:
 def main(args):
     
     # Read the CSV
-    record_ids_to_keep = get_ids_from_csv1(args.path_to_source_csv)
+    record_ids_to_keep = get_ids_from_csv1(args.path_to_csv_file)
     fulcrum_id_to_name_map = generate_renamed_files_based_on_csv(args.path_to_csv_in_target_directory) # Dict[str, str]
     target_directory = Path(args.path_to_csv_in_target_directory).parent
     
