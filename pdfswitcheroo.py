@@ -87,6 +87,8 @@ def main(args):
     fulcrum_id_to_name_map = generate_renamed_files_based_on_csv(args.path_to_csv_in_target_directory) # Dict[str, str]
     target_directory = Path(args.path_to_csv_in_target_directory).parent
     
+    print(f'Keeping files with the following IDs: {fulcrum_id_to_name_map.keys()}')
+    
     # For each file in the directory with the name <uuid>.pdf
     for fp in target_directory.glob('*.pdf'):
         # If the <uuid> of that file is a key in 
@@ -94,13 +96,13 @@ def main(args):
         # rename that file.
         if fp.stem in record_ids_to_keep:
             new_filename = fulcrum_id_to_name_map[fp.stem]
-            print(f"Renaming {fp.name} tp {new_filename}")
+            print(f"Renaming {fp.name} to {new_filename}")
             fp.rename(new_filename)
         else:
             # If not in the dict, delete
             # the file.
-            print(f"{fp.stem} not in CSV, deleting: {fulcrum_id_to_name_map.keys()}")
-            fp.unlink()
+            print(f"{fp.stem} not in CSV, deleting")
+            #fp.unlink()
             
 
 
