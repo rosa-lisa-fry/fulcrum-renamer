@@ -1,12 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# - CSV containing a list of `site-id`, `filename` pairs. 
-# - A directory of files with a lot of PDF `site-ids`
-# - Wants to remove the extra files based on the `site-ids` in the CSV
-# - Then wants to rename the file from `site-ids` to the `filename` in the CSV
-
-# In[4]:
+# In[25]:
 
 
 import argparse
@@ -17,6 +12,7 @@ import sys
 from pathlib import Path
 from slugify import slugify
 from typing import Dict, List
+from uuid import uuid4
 
 
 DIRECTION_REGEX = re.compile(r'^([NSEW]{1,2}\.?|North|South|East|West)$', re.I)
@@ -40,18 +36,16 @@ def split_c_address_thoroughfare(c_address_thoroughfare: str) -> str:
     return ' '.join(output)
 
 
-def get_ids_from_csv1(path_to_csv: str) -> pd.DataFrame:
+def get_ids_from_source_csv(path_to_csv: str) -> pd.DataFrame:
     df = pd.read_csv(path_to_csv)
     if not '_record_id' in df.columns:
         raise Exception(f"Can't find the _record_id column in the CSV {path_to_csv}!")
     return df['_record_id'].unique().tolist()
 
     
-def generate_renamed_files_based_on_csv(path_to_csv: str) -> Dict[str, str]:
+def generate_renamed_files_from_target_csv(path_to_csv: str) -> Dict[str, str]:
     
-    csv_file = Path(path_to_csv)
-    
-    df = pd.read_csv(str(csv_file))
+    df = pd.read_csv(path_to_csv)
     
     df['fixed_c_address_thoroughfare'] = df.c_address_thoroughfare.apply(split_c_address_thoroughfare)
     
@@ -78,39 +72,83 @@ def generate_renamed_files_based_on_csv(path_to_csv: str) -> Dict[str, str]:
     return dict(df[['fulcrum_id', 'adjusted_address_rename_value']].values)
 
 
+def _make_test_data(args):
+    
+    # Read the source CSV and get the _record_ids of interest
+    record_ids_to_keep = get_ids_from_source_csv(args.source_csv) # List[str]
+    
+    # Target directory is where the PDF files live
+    target_directory = Path(args.target_csv).parent # Path
+    
+    # Create files that should match the records to keep
+    for _id in record_ids_to_keep:
+        (target_directory / f'{_id}.pdf').write_text('foo')
+    
+    # Make some randomly named files to match the pattern
+    for _ in range(24):
+        (target_directory / f'{uuid4()}.pdf').write_text('foo')
+
+
 # In[3]:
 
 
 def main(args):
     
-    # Read the CSV
-    record_ids_to_keep = get_ids_from_csv1(args.path_to_csv_file)
-    fulcrum_id_to_name_map = generate_renamed_files_based_on_csv(args.path_to_csv_in_target_directory) # Dict[str, str]
-    target_directory = Path(args.path_to_csv_in_target_directory).parent
+    # Read the source CSV and get the _record_ids of interest
+    record_ids_to_keep = get_ids_from_source_csv(args.source_csv) # List[str]
     
-    print(f'Keeping files with the following IDs: {fulcrum_id_to_name_map.keys()}')
-    
+    # Read the target CSV and caluclate a dictionary of record_id::new filenames
+    fulcrum_id_to_filename_map = generate_renamed_files_from_target_csv(args.target_csv) # Dict[str, str]
+
+    # Target directory is where the PDF files live
+    target_directory = Path(args.target_csv).parent # Path
+
+    # Trash directory is where we want to move unwanted files.
+    trash_directory = target_directory / 'unwanted_files' # Path
+    trash_directory.mkdir(exist_ok=True)
+
+    print(f'Keeping files with the following IDs: {record_ids_to_keep}')
+
     # For each file in the directory with the name <uuid>.pdf
+
     for fp in target_directory.glob('*.pdf'):
-        # If the <uuid> of that file is a key in 
-        # the dict of <uuid>: <renamed-file>, then
-        # rename that file.
+
+        # If the <uuid> of that file is in the 
+        # list of record IDs in the source CSV.
+
         if fp.stem in record_ids_to_keep:
-            new_filename = Path(fulcrum_id_to_name_map[fp.stem] + '.pdf')
-            if new_filename.exists():
-                existing_files = target_directory.glob(slugified_address + '*')
-                renamed_file = guid_file.rename(
-                    slugified_address + '-' + str(len(list(existing_files))) + '.pdf')
-                print(f'Renaming {new_filename} to {renamed_file}')
-            else:
-                print(f"Renaming {fp.name} to {new_filename}")
-                fp.rename(new_filename)
-        else:
-            # If not in the dict, delete
-            # the file.
-            print(f"{fp.stem} not in CSV, deleting")
-            #fp.unlink()
+
+            # Obtain the new filename by looking up the
+            # id in the dictionary of ids->converted filenames.
+            new_filename = fulcrum_id_to_filename_map.get(fp.stem) # str
+
+            if not new_filename:
+                print(f'File {fp.name} is in the source CSV and the destination directory, but not in the target CSV!')
+                continue
+
+            renamed_file = target_directory / f'{new_filename}.pdf' # Path
+
+            # If the renamed file already exists
+            # in the target directory, then append
+            # an incrementing number to the filename
+            # to ensure uniqueness.
+
+            if renamed_file.exists():
+                existing_files = target_directory.glob(new_filename + '*')
+                renamed_file = Path('-'.join(new_filename, str(len(list(existing_files))), '.pdf')) # Path
+
+            # Rename the file to the newly calculated
+            # filename.
             
+            print(f"Renaming {fp.name} to {renamed_file}")
+            fp.rename(renamed_file)
+
+        else:
+            # If the file is not in the list of 
+            # records to keep, then delete the file.
+
+            print(f"{fp.name} not in CSV, moving to unwanted directory")
+            fp.replace(trash_directory / fp.name)
 
 
 # In[ ]:
@@ -118,13 +156,13 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-        description='Convert and delete unnecessary Fulcrum files.')
+        description='Convert and move unnecessary Fulcrum files.')
     
-    parser.add_argument('path_to_csv_file',
-        help='full path to CSV file directory.')
+    parser.add_argument('source_csv',
+        help='full path to CSV containing records to keep')
     
-    parser.add_argument('path_to_csv_in_target_directory',
-        help='full path to the directory of files to be renamed.')
+    parser.add_argument('target_csv',
+        help='full path to the target CSV in the same directory as the PDFs')
     
     args = parser.parse_args()
     main(args)
