@@ -70,33 +70,16 @@ def generate_renamed_files_from_target_csv(path_to_csv: str) -> Dict[str, str]:
     return dict(df[['fulcrum_id', 'adjusted_address_rename_value']].values)
 
 
-def _make_test_data(args):
-    
-    # Read the source CSV and get the _record_ids of interest
-    record_ids_to_keep = get_ids_from_source_csv(args.source_csv) # List[str]
-    
-    # Target directory is where the PDF files live
-    target_directory = Path(args.target_csv).parent # Path
-    
-    # Create files that should match the records to keep
-    for _id in record_ids_to_keep:
-        (target_directory / f'{_id}.pdf').write_text('foo')
-    
-    # Make some randomly named files to match the pattern
-    for _ in range(24):
-        (target_directory / f'{uuid4()}.pdf').write_text('foo')
-
-        
 def run(source_csv: str, target_csv: str):
     
     # Read the source CSV and get the _record_ids of interest
-    record_ids_to_keep = get_ids_from_source_csv(args.source_csv) # List[str]
+    record_ids_to_keep = get_ids_from_source_csv(source_csv) # List[str]
     
     # Read the target CSV and caluclate a dictionary of record_id::new filenames
-    fulcrum_id_to_filename_map = generate_renamed_files_from_target_csv(args.target_csv) # Dict[str, str]
+    fulcrum_id_to_filename_map = generate_renamed_files_from_target_csv(target_csv) # Dict[str, str]
 
     # Target directory is where the PDF files live
-    target_directory = Path(args.target_csv).parent # Path
+    target_directory = Path(target_csv).parent # Path'
 
     # Trash directory is where we want to move unwanted files.
     trash_directory = target_directory / 'unwanted_files' # Path
